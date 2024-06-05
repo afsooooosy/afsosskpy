@@ -1,95 +1,55 @@
-import logging
-import requests
-from telegram import Update, Bot
-from telegram.ext import Application, CommandHandler, ContextTypes
 from flask import Flask, request
-import os
+from telegram import Bot, Update
+from telegram.ext import Dispatcher, CommandHandler, MessageHandler, Filters
+import requests
+import json
+import logging
 
-# إعدادات البوت وAPI KEY
-API_KEY = "7389066468:AAHG5UyOxxHyO5oJ3h4S9_q9asorcPCxx04"
-bot = Bot(API_KEY)
-
-# إعداد Flask
 app = Flask(__name__)
 
-# إعداد سجل التحديثات
-logging.basicConfig(
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    level=logging.INFO
-)
-logger = logging.getLogger(__name__)
+API_KEY = "6674198155:AAHxHc333DZOL0Z5JHzZTHpAI3O0Zbex5x8"
+bot = Bot(token=API_KEY)
 
-# دوال المساعدة
-def get_balance(secret_key):
-    url = "https://api.stripe.com/v1/balance"
-    response = requests.get(url, auth=(secret_key, ''))
-    return response.json()
+dispatcher = Dispatcher(bot, None, use_context=True)
 
-def get_users(secret_key):
-    url = "https://api.stripe.com/v1/charges?limit=15"
-    response = requests.get(url, auth=(secret_key, ''))
-    return response.json()
+def start(update, context):
+    update.message.reply_text('Welcome to the Stripe Key Checker bot!')
 
-def get_pk(secret_key):
-    url = "https://api.stripe.com/v1/checkout/sessions"
-    data = {
-        'payment_method_types[]': 'card',
-        'line_items[0][price_data][currency]': 'usd',
-        'line_items[0][price_data][product_data][name]': 'T-shirt',
-        'line_items[0][price_data][unit_amount]': 2000,
-        'line_items[0][quantity]': 1,
-        'mode': 'payment',
-        'success_url': 'https://example.com/success',
-        'cancel_url': 'https://example.com/cancel'
-    }
-    response = requests.post(url, auth=(secret_key, ''), data=data)
-    if response.status_code == 200:
-        return response.json().get('url', '').split('#')[1]
-    else:
-        return response.json().get('error', {}).get('message', 'Unknown error')
+def check_sk(update, context):
+    secret_key = context.args[0]
+    try:
+        headers = {
+            "Authorization": f"Bearer {secret_key}"
+        }
+        balance_response = requests.get("https://api.stripe.com/v1/balance", headers=headers)
+        balance_response.raise_for_status()
 
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("مرحبًا! استخدم الأمر /sk لفحص مفتاح Stripe.")
+        checkout_data = {
+            "payment_method_types[]": "card",
+            "line_items[][price_data][currency]": "usd",
+            "line_items[][price_data][product_data][name]": "T-shirt",
+            "line_items[][price_data][unit_amount]": 2000,
+            "line_items[][quantity]": 1,
+            "mode": "payment",
+            "success_url": "https://your-domain.com/success",
+            "cancel_url": "https://your-domain.com/cancel"
+        }
 
-async def check_sk(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    secret_key = ' '.join(context.args)
-    if not secret_key:
-        await update.message.reply_text("يرجى إرسال المفتاح السري بعد الأمر /sk.")
-        return
+        checkout_response = requests.post("https://api.stripe.com/v1/checkout/sessions", headers=headers, data=checkout_data)
+        checkout_response.raise_for_status()
 
-    pk = get_pk(secret_key)
-    if 'pk_live' in pk:
-        balance = get_balance(secret_key)
-        users = get_users(secret_key)
-        response_message = (
-            f"PK: {pk}\n"
-            f"Balance: {balance}\n"
-            f"Users: {users}"
-        )
-        await update.message.reply_text(response_message)
-    else:
-        await update.message.reply_text(f"Error checking the key: {pk}")
+        update.message.reply_text(f"The provided key is valid. PK Live: {checkout_response.json()['url']}")
+    except requests.exceptions.HTTPError as e:
+        update.message.reply_text(f"Error checking the key: {e.response.text}")
 
-# إعداد البوت
-app = Application.builder().token(API_KEY).build()
+dispatcher.add_handler(CommandHandler("start", start))
+dispatcher.add_handler(CommandHandler("sk", check_sk))
 
-# أوامر البوت
-app.add_handler(CommandHandler("start", start))
-app.add_handler(CommandHandler("sk", check_sk))
-
-# نقطة النهاية لـ webhook
 @app.route('/webhook', methods=['POST'])
 def webhook():
     update = Update.de_json(request.get_json(force=True), bot)
-    app.update_queue.put(update)
+    dispatcher.process_update(update)
     return 'ok'
 
-# إعداد webhook
-@app.route('/set_webhook', methods=['GET', 'POST'])
-def set_webhook():
-    webhook_url = f"https://{os.environ['RENDER_EXTERNAL_HOSTNAME']}/webhook"
-    bot.set_webhook(url=webhook_url)
-    return f"Webhook set to {webhook_url}"
-
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000)
+    app.run(port=8443)
