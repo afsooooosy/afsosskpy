@@ -2,7 +2,7 @@ from telegram import Update, Bot
 from telegram.ext import Updater, CommandHandler, CallbackContext
 import requests
 
-API_KEY = "7389066468:AAHG5UyOxxHyO5oJ3h4S9_q9asorcPCxx04"
+API_KEY = "6674198155:AAHxHc333DZOL0Z5JHzZTHpAI3O0Zbex5x8"
 bot = Bot(API_KEY)
 
 def start(update: Update, context: CallbackContext) -> None:
@@ -61,5 +61,5 @@ def main() -> None:
     updater.start_polling()
     updater.idle()
 
-if name == 'main':
+if __name__ == '__main__':
     main()
