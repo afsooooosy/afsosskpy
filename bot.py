@@ -6,7 +6,7 @@ from time import sleep
 from urllib.parse import unquote
 import base64
 
-API_KEY = "YOUR_TELEGRAM_BOT_API_KEY"
+API_KEY = "7389066468:AAHG5UyOxxHyO5oJ3h4S9_q9asorcPCxx04"
 bot = Bot(API_KEY)
 
 def start(update: Update, context: CallbackContext):
