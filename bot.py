@@ -11,7 +11,7 @@ API_KEY = os.getenv("API_KEY", "7389066468:AAHG5UyOxxHyO5oJ3h4S9_q9asorcPCxx04")
 bot = Bot(token=API_KEY)
 
 def set_webhook():
-    webhook_url = f"https://{os.getenv('RENDER_EXTERNAL_URL')}/webhook"
+    webhook_url = f"https://afsosskpy.onrender.com/webhook"
     bot.set_webhook(webhook_url)
 
 def start(update, context):
