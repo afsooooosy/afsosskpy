@@ -58,7 +58,9 @@ def check_sk_key(sk_key: str) -> str:
             'success_url': 'https://your-domain.com/success',
             'cancel_url': 'https://your-domain.com/cancel'
         }
-        checkout_response = requests.post("https://api.stripe.com/v1/checkout/sessions", headers=headers, data=checkout_data)
+        # تحويل البيانات إلى application/x-www-form-urlencoded
+        checkout_data_encoded = '&'.join(f'{k}={v}' for k, v in checkout_data.items())
+        checkout_response = requests.post("https://api.stripe.com/v1/checkout/sessions", headers=headers, data=checkout_data_encoded)
         
         if checkout_response.status_code != 200:
             logger.error(f"Error response from Stripe: {checkout_response.text}")
