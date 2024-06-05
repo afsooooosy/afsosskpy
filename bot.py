@@ -31,7 +31,7 @@ def decode_obfuscated_pk(url: str) -> str:
 def check_sk_key(sk_key: str) -> str:
     headers = {
         "Authorization": f"Bearer {sk_key}",
-        "Content-Type": "application/x-www-form-urlencoded"
+        "Content-Type": "application/json"
     }
     try:
         # فحص التوازن
@@ -59,7 +59,7 @@ def check_sk_key(sk_key: str) -> str:
             'success_url': 'https://your-domain.com/success',
             'cancel_url': 'https://your-domain.com/cancel',
         }
-        checkout_response = requests.post("https://api.stripe.com/v1/checkout/sessions", headers=headers, data=checkout_data)
+        checkout_response = requests.post("https://api.stripe.com/v1/checkout/sessions", headers=headers, json=checkout_data)
         
         if checkout_response.status_code != 200:
             logger.error(f"Error response from Stripe: {checkout_response.text}")
