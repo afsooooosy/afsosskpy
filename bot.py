@@ -60,6 +60,11 @@ def check_sk_key(sk_key: str) -> str:
             'cancel_url': 'https://your-domain.com/cancel',
         }
         checkout_response = requests.post("https://api.stripe.com/v1/checkout/sessions", headers=headers, data=checkout_data)
+        
+        if checkout_response.status_code != 200:
+            logger.error(f"Error response from Stripe: {checkout_response.text}")
+            return f"Error checking the key: {checkout_response.text}"
+        
         checkout_response.raise_for_status()
         checkout_session = checkout_response.json()
         
