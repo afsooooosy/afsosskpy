@@ -159,7 +159,7 @@ def webhook(request):
         dispatcher.process_update(update)
     return 'ok'
 
-dispatcher = Dispatcher(bot, None, workers=0)
+dispatcher = Dispatcher(bot, None, workers=1)
 dispatcher.add_handler(CommandHandler("start", start))
 dispatcher.add_handler(CommandHandler("sk", check_sk))
 
