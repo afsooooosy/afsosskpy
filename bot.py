@@ -2,6 +2,8 @@ from telegram import Update, Bot
 from telegram.ext import Updater, CommandHandler, CallbackContext
 import requests
 import logging
+import base64
+import json
 
 # إعداد تسجيل الدخول لمراقبة الأخطاء
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
@@ -14,6 +16,17 @@ bot = Bot(API_KEY)
 
 def start(update: Update, context: CallbackContext) -> None:
     update.message.reply_text('Hello! Use /sk <your_sk_key> to check your key.')
+
+def decode_obfuscated_pk(url: str) -> str:
+    try:
+        obfuscated_pk = url.split("#")[1]
+        decoded = base64.b64decode(obfuscated_pk)
+        deobfuscated = "".join([chr(5 ^ ord(c)) for c in decoded.decode()])
+        pk_data = json.loads(deobfuscated)
+        return pk_data["apiKey"]
+    except Exception as e:
+        logger.error(f"Error decoding PK: {str(e)}")
+        return "Error decoding PK"
 
 def check_sk_key(sk_key: str) -> str:
     headers = {
@@ -51,7 +64,7 @@ def check_sk_key(sk_key: str) -> str:
         checkout_session = checkout_response.json()
         
         if 'url' in checkout_session:
-            pk_live = "pk_live_xxx"  # يتم استرجاع المفتاح من البيانات بشكل صحيح
+            pk_live = decode_obfuscated_pk(checkout_session['url'])
         else:
             pk_live = "Error fetching PK"
 
