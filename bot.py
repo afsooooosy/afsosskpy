@@ -1,9 +1,11 @@
 from telegram import Update, Bot
-from telegram.ext import Updater, CommandHandler, CallbackContext
+from telegram.ext import Updater, CommandHandler, CallbackContext, Dispatcher
+from flask import Flask, request
 import requests
 import logging
 import base64
 import json
+import os
 
 # إعداد تسجيل الدخول لمراقبة الأخطاء
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
@@ -11,8 +13,9 @@ logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s
 
 logger = logging.getLogger(__name__)
 
-API_KEY = "7389066468:AAHG5UyOxxHyO5oJ3h4S9_q9asorcPCxx04"
+API_KEY = os.getenv("TELEGRAM_API_KEY", "7389066468:AAHG5UyOxxHyO5oJ3h4S9_q9asorcPCxx04")
 bot = Bot(API_KEY)
+app = Flask(__name__)
 
 def start(update: Update, context: CallbackContext) -> None:
     update.message.reply_text('Hello! Use /sk <your_sk_key> to check your key.')
@@ -31,7 +34,7 @@ def decode_obfuscated_pk(url: str) -> str:
 def check_sk_key(sk_key: str) -> str:
     headers = {
         "Authorization": f"Bearer {sk_key}",
-        "Content-Type": "application/json"
+        "Content-Type": "application/x-www-form-urlencoded"
     }
     try:
         # فحص التوازن
@@ -46,20 +49,16 @@ def check_sk_key(sk_key: str) -> str:
 
         # فحص مفتاح PK
         checkout_data = {
-            'payment_method_types': ['card'],
-            'line_items': [{
-                'price_data': {
-                    'currency': 'usd',
-                    'product_data': {'name': 'T-shirt'},
-                    'unit_amount': 2000,
-                },
-                'quantity': 1,
-            }],
+            'payment_method_types[]': 'card',
+            'line_items[0][price_data][currency]': 'usd',
+            'line_items[0][price_data][product_data][name]': 'T-shirt',
+            'line_items[0][price_data][unit_amount]': 2000,
+            'line_items[0][quantity]': 1,
             'mode': 'payment',
             'success_url': 'https://your-domain.com/success',
-            'cancel_url': 'https://your-domain.com/cancel',
+            'cancel_url': 'https://your-domain.com/cancel'
         }
-        checkout_response = requests.post("https://api.stripe.com/v1/checkout/sessions", headers=headers, json=checkout_data)
+        checkout_response = requests.post("https://api.stripe.com/v1/checkout/sessions", headers=headers, data=checkout_data)
         
         if checkout_response.status_code != 200:
             logger.error(f"Error response from Stripe: {checkout_response.text}")
@@ -101,18 +100,21 @@ def check_sk(update: Update, context: CallbackContext) -> None:
     result = check_sk_key(sk_key)
     update.message.reply_text(result)
 
-def main() -> None:
-    try:
-        updater = Updater(API_KEY)
-        dispatcher = updater.dispatcher
+@app.route(f"/{API_KEY}", methods=["POST"])
+def webhook() -> str:
+    update = Update.de_json(request.get_json(force=True), bot)
+    dispatcher.process_update(update)
+    return "ok"
 
-        dispatcher.add_handler(CommandHandler("start", start))
-        dispatcher.add_handler(CommandHandler("sk", check_sk))
+if __name__ == "__main__":
+    updater = Updater(API_KEY)
+    dispatcher = updater.dispatcher
 
-        updater.start_polling()
-        updater.idle()
-    except Exception as e:
-        logger.error(f"Failed to start the bot: {e}")
+    dispatcher.add_handler(CommandHandler("start", start))
+    dispatcher.add_handler(CommandHandler("sk", check_sk))
 
-if __name__ == '__main__':
-    main()
+    # تعيين عنوان URL للويب هوك
+    bot.setWebhook(f"https://afsosskpy.onrender.com/{API_KEY}")
+
+    # بدء خادم Flask
+    app.run(port=8443)
