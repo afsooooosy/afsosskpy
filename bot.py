@@ -1,175 +1,136 @@
-import os
 import json
-import base64
 import requests
-from flask import Flask, request
-from telegram import Bot, Update
-from telegram.ext import Dispatcher, CommandHandler
+from telegram import Update, Bot, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram.ext import Updater, CommandHandler, CallbackContext
+from time import sleep
+from urllib.parse import unquote
+import base64
 
-app = Flask(__name__)
-API_KEY = os.getenv("API_KEY", "7389066468:AAHG5UyOxxHyO5oJ3h4S9_q9asorcPCxx04")
-bot = Bot(token=API_KEY)
+API_KEY = "YOUR_TELEGRAM_BOT_API_KEY"
+bot = Bot(API_KEY)
 
-def set_webhook():
-    webhook_url = f"https://afsosskpy.onrender.com/webhook"
-    bot.set_webhook(webhook_url)
-
-def start(update, context):
+def start(update: Update, context: CallbackContext):
     chat_id = update.message.chat_id
     caption = (
         "<b>Sk CHECKER\n"
         "• Usage: </b><code>/sk sk_live_xxx</code>\n"
         "<b>• Status: ON ✅</b>"
     )
-    bot.send_photo(chat_id, photo=f"https://t.me/{update.message.from_user.username}", caption=caption, parse_mode="HTML")
+    keyboard = [
+        [InlineKeyboardButton("FaresM", url="https://t.me/a_aaq"), InlineKeyboardButton("Group", url="https://t.me/a_aaq")]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    bot.send_photo(chat_id=chat_id, photo="https://t.me/" + update.message.from_user.username, caption=caption, parse_mode="HTML", reply_markup=reply_markup)
 
-def check_sk(update, context):
+def check_sk(update: Update, context: CallbackContext):
     chat_id = update.message.chat_id
-    secret_key = context.args[0]
-    bot.send_message(chat_id, "CHICK", parse_mode="HTML")
+    secret_key = update.message.text.split("/sk ", 1)[1]
+    
+    message = bot.send_message(chat_id=chat_id, text="CHECKING...", reply_markup=InlineKeyboardMarkup([
+        [InlineKeyboardButton("FarrsM", url="https://t.me/a_aaq"), InlineKeyboardButton("Group", url="https://t.me/a_aaq")]
+    ]))
 
     steps = 10
-    time_icons = ['🕛', '🕧', '🕐', '🕜', '🕑', '🕝', '🕒', '🕞', '🕓', '🕟', '🕔', '🕠', '🕕', '🕡', '🕖', '🕢', '🕗', '🕣', '🕘', '🕤', '🕙', '🕥', '🕚', '🕦']
-    
+    time_icons = [
+        '🕛', '🕧', '🕐', '🕜', '🕑', '🕝', '🕒', '🕞', '🕓', '🕟', '🕔', '🕠', '🕕', '🕡', '🕖', '🕢', '🕗', '🕣', '🕘', '🕤', '🕙', '🕥', '🕚', '🕦'
+    ]
     for i in range(steps + 1):
-        progress = "⭕" * i + "⚪️" * (steps - i)
+        progress = '⭕' * i + '⚪️' * (steps - i)
         time_icon = time_icons[i % len(time_icons)]
-        message = f"{time_icon} Processing... [{progress}] {i * 10}%\n\n🔗 Check out our channels:\n🔹 <a href=\"https://t.me/a_aaq\">FaresM</a>\n🔹 <a href=\"https://t.me/a_aaq\">Group</a>"
-        bot.send_message(chat_id, message, parse_mode="HTML")
+        message_text = f"{time_icon} Processing... [{progress}] {i * 10}%\n\n"
+        message_text += "🔗 Check out our channels:\n"
+        message_text += "🔹 <a href=\"https://t.me/a_aaq\">FaresM</a>\n"
+        message_text += "🔹 <a href=\"https://t.me/a_aaq\">Group</a>"
+        
+        bot.edit_message_text(chat_id=chat_id, message_id=message.message_id, text=message_text, parse_mode='HTML')
+        sleep(1)
 
-    pk_result = get_pk(secret_key)
-    if 'Error' in pk_result:
-        msg = f"<b>→ Sk Checker\n→ Result: Dead\n• Key: </b><code>{secret_key}</code>\n→ Checked By: @{update.message.from_user.username} [Free]"
-        bot.send_message(chat_id, msg, parse_mode="HTML")
-    else:
-        pk = pk_result
-        gusr = json.loads(get_users(secret_key))
-        gcur = json.loads(get_cur(secret_key))
-        skk = gusr["SK"]
-        limit = gusr["users"]
-        country = gusr["country"]
-        currency = gusr["currency"]
-        lista = gusr["Lists"]
-        cura = gcur["cura"]
-        ama = gcur["ama"]
-        curp = gcur["curp"]
-        amp = gcur["amp"]
-        msg = (
-            f"<b>→ Sk Checker\n→ 🚺: ⚠️\n\n• Key: </b><code>{skk}</code>\n"
-            f"<b>• Pk: </b><code>{pk}</code>\n"
-            f"<b>• Currency: </b>{currency}\n"
-            f"<b>• Available Balance: </b>{ama}\n"
-            f"<b>→ Currency: </b>{cura}\n"
-            f"<b>• Pending Balance: {amp}\n→ Currency: {curp}\n"
-            f"• Response: Live Key ✅\n"
-            f"• Country: {country}\n"
-            f"• Users Checked: {limit}\n"
-            f"→ Names: {lista}\n\n"
-            f"→ 🔗 Check out our channels:</b>\n🔹 <a href=\"https://t.me/a_aaq\">FaresM</a>\n🔹 <a href=\"https://t.me/a_aaq\">Group</a>\n"
-            f"<b> Checked By: @{update.message.from_user.username} [Free]</b>"
-        )
-        bot.send_message(chat_id, msg, parse_mode="HTML")
+    try:
+        pk_result = get_pk(secret_key)
+        if "Error creating Checkout Session" in pk_result:
+            bot.edit_message_text(chat_id=chat_id, message_id=message.message_id, text=f"<b>→ Sk Checker\n→ Result: Dead\n• Key: </b><code>{secret_key}</code>\n→ Checked By: @{update.message.from_user.username} [Free]", parse_mode="HTML")
+        else:
+            sk_details = get_sk_details(secret_key)
+            response = f"<b>→ Sk Checker\n→ 🚺: ⚠️\n\n• Key: </b><code>{sk_details['SK']}</code>\n"
+            response += f"<b>• Pk: </b><code>{pk_result}</code>\n"
+            response += f"<b>• Currency: </b>{sk_details['currency']}\n"
+            response += f"<b>• Available Balance: </b>{sk_details['available_amount']}\n"
+            response += f"<b>• Pending Balance: </b>{sk_details['pending_amount']}\n"
+            response += f"• Response: Live Key ✅\n"
+            response += f"• Users Checked: {sk_details['users']}\n"
+            response += f"→Names : {sk_details['lists']}\n\n"
+            response += "→ 🔗 Check out our channels:</b>\n"
+            response += "🔹 <a href=\"https://t.me/a_aaq\">FaresM</a>\n"
+            response += "🔹 <a href=\"https://t.me/a_aaq\">Group</a>\n"
+            response += f"<b> Checked By: @{update.message.from_user.username} [Free]</b>"
+
+            bot.edit_message_text(chat_id=chat_id, message_id=message.message_id, text=response, parse_mode="HTML")
+    except Exception as e:
+        bot.edit_message_text(chat_id=chat_id, message_id=message.message_id, text=f"Error checking the key: {e}")
 
 def get_pk(secret_key):
-    try:
-        response = requests.post(
-            'https://api.stripe.com/v1/checkout/sessions',
-            auth=(secret_key, ''),
-            data={
-                'payment_method_types[]': 'card',
-                'line_items[0][price_data][currency]': 'usd',
-                'line_items[0][price_data][product_data][name]': 'T-shirt',
-                'line_items[0][price_data][unit_amount]': 2000,
-                'line_items[0][quantity]': 1,
-                'mode': 'payment',
-                'success_url': 'https://your-domain.com/success',
-                'cancel_url': 'https://your-domain.com/cancel'
-            }
-        )
-        response.raise_for_status()
-        checkout_session = response.json()
-        if 'url' in checkout_session:
-            obfuscated_pk = urldecode(explode("#", checkout_session['url'])[1])
-            decoded = base64.b64decode(obfuscated_pk)
-            deobfed = ''.join([chr(5 ^ ord(c)) for c in decoded])
-            shuroap = json.loads(deobfed)
-            pklive = shuroap["apiKey"]
-            return pklive
-        else:
-            return f"Error creating Checkout Session: {checkout_session['error']['message']}"
-    except requests.exceptions.RequestException as e:
-        return f"Error checking the key: {str(e)}"
+    url = 'https://api.stripe.com/v1/checkout/sessions'
+    headers = {'Authorization': f'Bearer {secret_key}'}
+    data = {
+        'payment_method_types[]': 'card',
+        'line_items[][price_data][currency]': 'usd',
+        'line_items[][price_data][product_data][name]': 'T-shirt',
+        'line_items[][price_data][unit_amount]': 2000,
+        'line_items[][quantity]': 1,
+        'mode': 'payment',
+        'success_url': 'https://your-domain.com/success',
+        'cancel_url': 'https://your-domain.com/cancel'
+    }
+    response = requests.post(url, headers=headers, data=data)
+    response_data = response.json()
 
-def get_cur(secret_key):
-    try:
-        response = requests.get(
-            'https://api.stripe.com/v1/balance',
-            auth=(secret_key, '')
-        )
-        response.raise_for_status()
-        decoded_response = response.json()
-        json_data = json.dumps({
-            "cura": decoded_response['available'][0]['currency'],
-            "ama": decoded_response['available'][0]['amount'],
-            "curp": decoded_response['pending'][0]['currency'],
-            "amp": decoded_response['pending'][0]['amount']
-        })
-        return json_data
-    except requests.exceptions.RequestException as e:
-        return f"Error checking the key: {str(e)}"
+    if 'url' in response_data:
+        obfuscated_pk = unquote(response_data['url'].split("#")[1])
+        decoded = base64.b64decode(obfuscated_pk).decode('utf-8')
+        deobfuscated = ''.join(chr(5 ^ ord(c)) for c in decoded)
+        pk_live = json.loads(deobfuscated)["apiKey"]
+        return pk_live
+    else:
+        raise Exception(response_data.get('error', {}).get('message', 'Unknown error'))
 
-def get_users(secret_key):
-    if secret_key:
-        headers = {
-            'Authorization': f'Bearer {secret_key}',
-            'Content-Type': 'application/x-www-form-urlencoded'
+def get_sk_details(secret_key):
+    url = 'https://api.stripe.com/v1/charges'
+    headers = {'Authorization': f'Bearer {secret_key}'}
+    params = {'limit': 15}
+    response = requests.get(url, headers=headers, params=params)
+    charges = response.json()
+
+    if 'data' in charges:
+        charge_count = len(charges['data'])
+        descriptions = [charge['description'] for charge in charges['data'] if 'description' in charge]
+        currency = charges['data'][0]['currency']
+        available_amount = charges['data'][0]['amount']
+        pending_amount = charges['data'][0]['amount']
+        country = charges['data'][0]['billing_details']['address']['country']
+        sk_parts = secret_key.split('_')
+        sk_obfuscated = f"sk_live_{sk_parts[2][:5]}•fares•{sk_parts[2][-5:]}"
+
+        return {
+            "lists": "\n".join(descriptions),
+            "SK": sk_obfuscated,
+            "users": charge_count,
+            "currency": currency,
+            "available_amount": available_amount,
+            "pending_amount": pending_amount,
+            "country": country
         }
-        params = {
-            'limit': 15
-        }
-        try:
-            response = requests.get(
-                'https://api.stripe.com/v1/charges',
-                headers=headers,
-                params=params
-            )
-            response.raise_for_status()
-            charges = response.json()
-            charge_count = len(charges['data'])
-            lists = [charge.get('description', 'No description') for charge in charges['data']]
-            skdegcount = secret_key.split('_')[2]
-            ass = skdegcount[:5]
-            boobs = skdegcount[-5:]
-            currency = charges['data'][0]['currency']
-            country = charges['data'][0]['billing_details']['address']['country']
-            json_data = json.dumps({
-                "Lists": "\n".join(lists),
-                "SK": f"sk_live_{ass}•fares•{boobs}",
-                "users": charge_count,
-                "currency": currency,
-                "country": country
-            })
-            return json_data
-        except requests.exceptions.RequestException as e:
-            return f"Error checking the key: {str(e)}"
+    else:
+        raise Exception(charges.get('error', {}).get('message', 'Unknown error'))
 
-def webhook(request):
-    if request.method == 'POST':
-        update = Update.de_json(request.get_json(force=True), bot)
-        dispatcher.process_update(update)
-    return 'ok'
+def main():
+    updater = Updater(API_KEY, use_context=True)
+    dp = updater.dispatcher
 
-dispatcher = Dispatcher(bot, None, workers=1)
-dispatcher.add_handler(CommandHandler("start", start))
-dispatcher.add_handler(CommandHandler("sk", check_sk))
+    dp.add_handler(CommandHandler("start", start))
+    dp.add_handler(CommandHandler("sk", check_sk))
 
-@app.route('/webhook', methods=['POST'])
-def webhook():
-    if request.method == 'POST':
-        update = Update.de_json(request.get_json(force=True), bot)
-        dispatcher.process_update(update)
-    return 'ok'
+    updater.start_polling()
+    updater.idle()
 
 if __name__ == "__main__":
-    set_webhook()
-    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+    main()
